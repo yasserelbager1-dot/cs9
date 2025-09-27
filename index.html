@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>📚 نظام الدرجات</title>
+<style>
+body{
+    font-family: Tahoma, Arial, sans-serif;
+    background:#f0f4f7;
+    margin:0;
+    padding:0;
+}
+header{
+    background:#4a90e2;
+    color:#fff;
+    text-align:center;
+    padding:20px;
+    font-size:24px;
+    box-shadow:0 2px 6px rgba(0,0,0,.2);
+}
+.container{
+    max-width:900px;
+    margin:30px auto;
+    background:#fff;
+    padding:20px;
+    border-radius:10px;
+    box-shadow:0 2px 6px rgba(0,0,0,.1);
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:30px;
+}
+h3{color:#4a90e2;text-align:center;}
+input,button{
+    width:90%;
+    padding:10px;
+    margin:8px 0;
+    border:1px solid #ccc;
+    border-radius:6px;
+    font-size:16px;
+}
+button{
+    background:#4a90e2;
+    color:#fff;
+    cursor:pointer;
+    transition:.2s;
+}
+button:hover{background:#357abd;}
+.section{
+    background:#fafafa;
+    padding:15px;
+    border-radius:8px;
+    text-align:center;
+    border:1px solid #ddd;
+}
+.hidden{display:none;}
+table{
+    width:100%;
+    border-collapse: collapse;
+    margin-top:10px;
+}
+table th, table td{
+    border:1px solid #ddd;
+    padding:8px;
+    text-align:center;
+}
+table th{
+    background:#4a90e2;
+    color:#fff;
+}
+</style>
+</head>
+<body>
+
+<header>📚 نظام تسجيل الدرجات</header>
+
+<div class="container">
+    <!-- قسم الطالب -->
+    <div class="section">
+        <h3>قسم الطالب</h3>
+        <input type="text" id="studentName" placeholder="اسم الطالب">
+        <input type="text" id="studentClass" placeholder="اسم الفصل">
+        <button onclick="registerStudent()">تسجيل الطالب</button>
+
+        <div id="questionArea" class="hidden">
+            <p><strong>سؤال النص:</strong>  
+               <br>ما هي عاصمة المملكة العربية السعودية؟
+            </p>
+            <input type="text" id="studentAnswer" placeholder="اكتب الإجابة">
+            <button onclick="submitAnswer()">إرسال الإجابة</button>
+            <p id="answerMsg"></p>
+        </div>
+    </div>
+
+    <!-- قسم المعلم -->
+    <div class="section">
+        <h3>قسم المعلم</h3>
+        <input type="text" id="teacherUser" placeholder="اسم المستخدم">
+        <input type="password" id="teacherPass" placeholder="كلمة المرور">
+        <button onclick="teacherLogin()">دخول المعلم</button>
+
+        <div id="teacherPanel" class="hidden">
+            <p><strong>جدول الطلاب الذين أجابوا:</strong></p>
+            <table id="studentsTable">
+                <thead>
+                    <tr>
+                        <th>الاسم</th>
+                        <th>الفصل</th>
+                        <th>الدرجة</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            <button onclick="teacherLogout()">🚪 خروج المعلم</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const studentListKey = "studentsList";
+const teacherKey = "teacherLogin";
+
+// جلب قائمة الطلاب من التخزين
+function getStudents(){
+    return JSON.parse(localStorage.getItem(studentListKey) || "[]");
+}
+
+// حفظ القائمة
+function saveStudents(list){
+    localStorage.setItem(studentListKey, JSON.stringify(list));
+}
+
+// تسجيل الطالب
+function registerStudent(){
+    const name = document.getElementById("studentName").value.trim();
+    const cls  = document.getElementById("studentClass").value.trim();
+    if(!name || !cls){alert("أدخل الاسم والفصل");return;}
+
+    // تحقق إذا الطالب سبق وأجاب
+    const list = getStudents();
+    const existing = list.find(s => s.name===name && s.cls===cls);
+    if(existing){
+        alert("لقد أجبت سابقاً، لا يمكنك الإجابة مرة أخرى.");
+        return;
+    }
+
+    // حفظ بيانات الطالب مؤقتاً للجلسة
+    sessionStorage.setItem("currentStudent", JSON.stringify({name, cls}));
+    document.getElementById("questionArea").classList.remove("hidden");
+}
+
+// إرسال إجابة الطالب
+function submitAnswer(){
+    const ans = document.getElementById("studentAnswer").value.trim();
+    const current = JSON.parse(sessionStorage.getItem("currentStudent")||"{}");
+    if(!current.name){alert("سجل بياناتك أولاً");return;}
+
+    // منع الطالب من إعادة الإجابة
+    const list = getStudents();
+    const alreadyAnswered = list.find(s => s.name===current.name && s.cls===current.cls);
+    if(alreadyAnswered){
+        alert("لقد أجبت سابقاً، لا يمكنك الإجابة مرة أخرى.");
+        return;
+    }
+
+    let score = 0;
+    if(ans === "الرياض" || ans.toLowerCase() === "riyadh"){
+        score = 10;
+        document.getElementById("answerMsg").textContent = "إجابة صحيحة ✅";
+    }else{
+        document.getElementById("answerMsg").textContent = "إجابة خاطئة ❌";
+    }
+
+    list.push({name:current.name, cls:current.cls, score});
+    saveStudents(list);
+    document.getElementById("studentAnswer").value = "";
+}
+
+// دخول المعلم
+function teacherLogin(){
+    const u = document.getElementById("teacherUser").value.trim();
+    const p = document.getElementById("teacherPass").value.trim();
+    if(u==="teacher" && p==="1234"){
+        localStorage.setItem(teacherKey,"true");
+        document.getElementById("teacherPanel").classList.remove("hidden");
+        refreshTable();
+    }else{
+        alert("بيانات المعلم غير صحيحة");
+    }
+}
+
+// خروج المعلم
+function teacherLogout(){
+    localStorage.removeItem(teacherKey);
+    document.getElementById("teacherPanel").classList.add("hidden");
+}
+
+// تحديث جدول الطلاب
+function refreshTable(){
+    const tbody = document.querySelector("#studentsTable tbody");
+    tbody.innerHTML = "";
+    const list = getStudents();
+    list.forEach(s=>{
+        const row = document.createElement("tr");
+        row.innerHTML = `<td>${s.name}</td><td>${s.cls}</td><td>${s.score}</td>`;
+        tbody.appendChild(row);
+    });
+}
+
+// عند تحميل الصفحة
+window.onload = function(){
+    if(localStorage.getItem(teacherKey)){
+        document.getElementById("teacherPanel").classList.remove("hidden");
+        refreshTable();
+    }
+};
+</script>
+
+</body>
+</html>
+
+
